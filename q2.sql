@@ -9,9 +9,7 @@ CREATE OR REPLACE VIEW all_movie AS
         FROM 
         comedy_movie
     )
-
     UNION ALL
-
     (
         SELECT 
             id, 
@@ -34,9 +32,7 @@ CREATE OR REPLACE VIEW all_actor AS
         FROM 
         comedy_actor
     )
-
     UNION ALL
-
     (
         SELECT 
             id,

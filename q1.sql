@@ -19,20 +19,25 @@ CREATE OR REPLACE VIEW non_comedy_movie AS
 	m.title,
 	m.startYear AS year
 FROM movie m
+LEFT JOIN movie_genre mg
+	ON mg.movie = m.id
+LEFT JOIN genre g
+	ON g.id = mg.genre
 WHERE m.runtime >= 75
-	AND m.id NOT IN (SELECT id FROM comedy_movie));
+GROUP BY m.id
+HAVING NOT (ARRAY_AGG(g.name)::text[] @> ARRAY['Comedy']));
 
 --ComedyActor non-materialized
 CREATE OR REPLACE VIEW comedy_actor AS
 (SELECT m.*
 FROM (SELECT 
 		m.id
-	FROM movie m
-	LEFT JOIN movie_genre mg
-		ON mg.movie = m.id
-	LEFT JOIN genre g
-		ON g.id = mg.genre
-	WHERE g.name = 'Comedy') cm
+		FROM movie m
+		LEFT JOIN movie_genre mg
+			ON mg.movie = m.id
+		LEFT JOIN genre g
+			ON g.id = mg.genre
+		WHERE g.name = 'Comedy') cm
 INNER JOIN movie_actor ma
 	ON cm.id = ma.movie
 INNER JOIN member m
@@ -40,9 +45,20 @@ INNER JOIN member m
 	
 --NonComedyActors non-materialized
 CREATE OR REPLACE VIEW non_comedy_actor AS
-(SELECT * FROM 
-member
-WHERE id NOT IN (SELECT id FROM comedy_actor));
+(SELECT m.*
+FROM (SELECT 
+			m.id
+		FROM movie m
+		LEFT JOIN movie_genre mg
+			ON mg.movie = m.id
+		LEFT JOIN genre g
+			ON g.id = mg.genre
+		GROUP BY m.id
+		HAVING NOT (ARRAY_AGG(g.name)::text[] @> ARRAY['Comedy'])) ncm
+INNER JOIN movie_actor ma
+	ON ncm.id = ma.movie
+INNER JOIN member m
+	ON m.id = ma.actor);
 
 --ActedIn non-materialized
 CREATE OR REPLACE VIEW acted_in AS
@@ -70,8 +86,13 @@ CREATE MATERIALIZED VIEW non_comedy_movie_mat AS
 	m.title,
 	m.startYear AS year
 FROM movie m
+LEFT JOIN movie_genre mg
+	ON mg.movie = m.id
+LEFT JOIN genre g
+	ON g.id = mg.genre
 WHERE m.runtime >= 75
-	AND m.id NOT IN (SELECT id FROM comedy_movie_mat));
+GROUP BY m.id
+HAVING NOT (ARRAY_AGG(g.name)::text[] @> ARRAY['Comedy']));
 
 --ComedyActor materialized
 CREATE MATERIALIZED VIEW comedy_actor_mat AS
@@ -92,9 +113,20 @@ INNER JOIN member m
 
 --NonComedyActors materialized
 CREATE MATERIALIZED VIEW non_comedy_actor_mat AS
-(SELECT * FROM 
-member
-WHERE id NOT IN (SELECT id FROM comedy_actor_mat));
+(SELECT m.*
+FROM (SELECT 
+			m.id
+		FROM movie m
+		LEFT JOIN movie_genre mg
+			ON mg.movie = m.id
+		LEFT JOIN genre g
+			ON g.id = mg.genre
+		GROUP BY m.id
+		HAVING NOT (ARRAY_AGG(g.name)::text[] @> ARRAY['Comedy'])) ncm
+INNER JOIN movie_actor ma
+	ON ncm.id = ma.movie
+INNER JOIN member m
+	ON m.id = ma.actor);
 
 --ActedIn materialized
 CREATE MATERIALIZED VIEW acted_in_mat AS
